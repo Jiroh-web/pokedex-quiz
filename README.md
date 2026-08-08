@@ -1,16 +1,38 @@
-# React + Vite
+# ポケモン図鑑クイズ
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React と [PokeAPI](https://pokeapi.co/) を使って作った、ポケモンの名前を当てるクイズアプリです。図鑑番号順に挑戦する「地方モード」と、ランダムに10問出題される「ランダムモード」があります。
 
-Currently, two official plugins are available:
+## 特徴
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- 🗾 **地方モード**：カントーからガラルまで、地方ごとに図鑑番号順で出題
+- 🎲 **ランダム10問モード**：全国図鑑からランダムに10匹出題、正解数を集計
+- 🇯🇵 **日本語名で出題**：PokeAPIの多言語データから日本語名を取得して表示
+- 👤 **ユーザー管理**：名前を登録するだけで、個人ごとの解答履歴を記録
+- 📊 **記録・正答率の確認**：これまでの正答率や、間違えたことのあるポケモン一覧を確認可能
 
-## React Compiler
+## 使用技術
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- [React](https://react.dev/)（[Vite](https://vitejs.dev/) でセットアップ）
+- [PokeAPI](https://pokeapi.co/)（ポケモンデータ取得）
+- localStorage（ユーザー情報・解答履歴の保存、ブラウザ内のみ）
 
-## Expanding the ESLint configuration
+## セットアップ方法
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+```bash
+git clone https://github.com/Jiroh-web/pokedex-quiz.git
+cd pokedex-quiz
+npm install
+npm run dev
+```
+
+`http://localhost:5173` にアクセスすると起動します。
+
+## 今後追加したい機能
+
+- [ ] スコアランキング機能
+- [ ] タイプ別・世代別の絞り込み出題
+- [ ] PWA対応（ホーム画面に追加して使えるように）
+
+## クレジット
+
+ポケモンのデータは [PokeAPI](https://pokeapi.co/) を利用しています。
