@@ -63,6 +63,12 @@ function App() {
   const [currentUser, setCurrentUser] = useState(null); // ログイン中のユーザー
   const [newUserName, setNewUserName] = useState('');
 
+  // ---- 図鑑機能用の状態 ----
+  const [language, setLanguage] = useState('ja'); // 'ja' or 'en'
+  const [pokedexRegion, setPokedexRegion] = useState(null);
+  const [pokedexEntries, setPokedexEntries] = useState([]);
+  const [pokedexLoading, setPokedexLoading] = useState(false);
+
   // アプリ起動時に一度だけ実行:ユーザー一覧と前回ログイン情報を読み込む
   useEffect(() => {
     const storedUsers = loadFromStorage(STORAGE_KEYS.users, []);
@@ -72,7 +78,7 @@ function App() {
     const found = storedUsers.find((u) => u.id === storedCurrentUserId);
     if (found) {
       setCurrentUser(found);
-      setMode('menu'); // 前回ログイン情報があれば自動でメニューへ
+      setMode('modeSelect'); // 前回ログイン情報があれば自動でメニューへ
     } else {
       setMode('login'); // なければユーザー選択画面へ
     }
@@ -101,7 +107,7 @@ function App() {
   const handleSelectUser = (user) => {
     setCurrentUser(user);
     saveToStorage(STORAGE_KEYS.currentUserId, user.id);
-    setMode('menu');
+    setMode('modeSelect');
   };
 
   const handleCreateUser = (e) => {
@@ -172,6 +178,43 @@ function App() {
       setCurrentId(randomIds[nextIndex]);
     }
   };
+
+  // ---- 図鑑機能 ----
+const handleSelectPokedexRegion = (region) => {
+  setPokedexRegion(region);
+  setMode('pokedexList');
+  fetchPokedexEntries(region);
+};
+
+const fetchPokedexEntries = (region) => {
+  setPokedexLoading(true);
+  setPokedexEntries([]);
+
+  const ids = [];
+  for (let id = region.start; id <= region.end; id++) {
+    ids.push(id);
+  }
+
+  Promise.all(
+    ids.map((id) =>
+      Promise.all([
+        fetch(`https://pokeapi.co/api/v2/pokemon/${id}`).then((res) => res.json()),
+        fetch(`https://pokeapi.co/api/v2/pokemon-species/${id}`).then((res) => res.json()),
+      ]).then(([p, s]) => {
+        const jaEntry = s.names.find((n) => n.language.name === 'ja');
+        return {
+          id,
+          nameJa: jaEntry ? jaEntry.name : p.name,
+          nameEn: p.name,
+          sprite: p.sprites.front_default,
+        };
+      })
+    )
+  ).then((entries) => {
+    setPokedexEntries(entries);
+    setPokedexLoading(false);
+  });
+};
 
   // ---- 共通 ----
   const handleSubmit = (e) => {
@@ -263,6 +306,117 @@ function App() {
       </div>
     );
   }
+
+  // モード選択画面(新規)
+if (mode === 'modeSelect') {
+  return (
+    <div className="pokedex">
+      <div className="pokedex-header">
+        <span className="lens"></span>
+        <span className="lens small"></span>
+        <span className="lens small"></span>
+      </div>
+      <div className="pokedex-screen">
+        <span className="label">{currentUser.name}さん</span>
+        <h1>なにを する?</h1>
+      </div>
+      <div className="pokedex-console">
+        <button className="dex-button" onClick={() => setMode('menu')}>
+          クイズに挑戦
+        </button>
+        <button className="dex-button secondary" onClick={() => setMode('pokedexRegion')}>
+          図鑑を見る
+        </button>
+        <button className="dex-button ghost" onClick={handleLogout}>
+          ユーザー切替
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// 図鑑:地方選択画面(新規)
+if (mode === 'pokedexRegion') {
+  return (
+    <div className="pokedex">
+      <div className="pokedex-header">
+        <span className="lens"></span>
+        <span className="lens small"></span>
+        <span className="lens small"></span>
+      </div>
+      <div className="pokedex-screen">
+        <h1>地方を えらんでね</h1>
+      </div>
+      <div className="pokedex-console">
+        <h3>表示言語</h3>
+        <button
+          className="dex-button secondary"
+          onClick={() => setLanguage(language === 'ja' ? 'en' : 'ja')}
+        >
+          {language === 'ja' ? '日本語(→Englishに切替)' : 'English(→日本語に切替)'}
+        </button>
+
+        <h3>地方を選ぶ</h3>
+        {REGIONS.map((region) => (
+          <button
+            key={region.name}
+            className="dex-button"
+            onClick={() => handleSelectPokedexRegion(region)}
+          >
+            {region.name}地方(No.{region.start}〜{region.end})
+          </button>
+        ))}
+
+        <button className="dex-button ghost" onClick={() => setMode('modeSelect')}>
+          戻る
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// 図鑑:一覧表示画面(新規)
+if (mode === 'pokedexList') {
+  return (
+    <div className="pokedex">
+      <div className="pokedex-header">
+        <span className="lens"></span>
+        <span className="lens small"></span>
+        <span className="lens small"></span>
+      </div>
+      <div className="pokedex-screen">
+        <span className="label">{pokedexRegion.name}地方図鑑</span>
+        <h1>{language === 'ja' ? '日本語' : 'English'}</h1>
+      </div>
+      <div className="pokedex-console">
+        <button
+          className="dex-button secondary"
+          onClick={() => setLanguage(language === 'ja' ? 'en' : 'ja')}
+        >
+          {language === 'ja' ? 'Englishに切替' : '日本語に切替'}
+        </button>
+
+        {pokedexLoading ? (
+          <p>読み込み中...(範囲が広いと時間がかかります)</p>
+        ) : (
+          <div className="pokedex-grid">
+            {pokedexEntries.map((entry) => (
+              <div key={entry.id} className="pokedex-grid-item">
+                <img src={entry.sprite} alt={entry.nameEn} />
+                <p>No.{entry.id}</p>
+                <p>{language === 'ja' ? entry.nameJa : entry.nameEn}</p>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <button className="dex-button ghost" onClick={() => setMode('pokedexRegion')}>
+          地方選択に戻る
+        </button>
+      </div>
+    </div>
+  );
+}
 
   // ③ メニュー画面
   if (mode === 'menu') {
