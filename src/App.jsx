@@ -216,6 +216,14 @@ const fetchPokedexEntries = (region) => {
   });
 };
 
+const speakEnglishName = (name) => {
+  const utterance = new SpeechSynthesisUtterance(name);
+  utterance.lang = 'en-US'; // アメリカ英語の発音で読み上げる
+  utterance.rate = 0.9; // 少しゆっくりめ(1が標準速度)
+  window.speechSynthesis.cancel(); // 前の読み上げが残っていたらキャンセル
+  window.speechSynthesis.speak(utterance);
+};
+
   // ---- 共通 ----
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -401,12 +409,20 @@ if (mode === 'pokedexList') {
         ) : (
           <div className="pokedex-grid">
             {pokedexEntries.map((entry) => (
-              <div key={entry.id} className="pokedex-grid-item">
-                <img src={entry.sprite} alt={entry.nameEn} />
-                <p>No.{entry.id}</p>
-                <p>{language === 'ja' ? entry.nameJa : entry.nameEn}</p>
-              </div>
-            ))}
+          <div key={entry.id} className="pokedex-grid-item">
+            <img src={entry.sprite} alt={entry.nameEn} />
+            <p>No.{entry.id}</p>
+            <p>{language === 'ja' ? entry.nameJa : entry.nameEn}</p>
+            {language === 'en' && (
+              <button
+                className="speak-button"
+                onClick={() => speakEnglishName(entry.nameEn)}
+              >
+                🔊
+              </button>
+            )}
+          </div>
+        ))}
           </div>
         )}
 

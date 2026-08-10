@@ -240,3 +240,19 @@ body {
 .pokedex-grid-item p {
   margin: 2px 0;
 }
+
+.speak-button {
+  border: none;
+  background: var(--lens-blue);
+  color: white;
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  font-size: 13px;
+  cursor: pointer;
+  margin-top: 4px;
+}
+
+.speak-button:active {
+  transform: scale(0.9);
+}
