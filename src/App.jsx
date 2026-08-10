@@ -103,6 +103,14 @@ function App() {
       });
   }, [currentId]);
 
+  // 音声リストは非同期で読み込まれることがあるため、事前に読み込んでおく
+  useEffect(() => {
+    window.speechSynthesis.getVoices();
+    window.speechSynthesis.onvoiceschanged = () => {
+      window.speechSynthesis.getVoices();
+    };
+  }, []);
+
   // ---- ユーザー選択・作成 ----
   const handleSelectUser = (user) => {
     setCurrentUser(user);
@@ -218,9 +226,20 @@ const fetchPokedexEntries = (region) => {
 
 const speakEnglishName = (name) => {
   const utterance = new SpeechSynthesisUtterance(name);
-  utterance.lang = 'en-US'; // アメリカ英語の発音で読み上げる
-  utterance.rate = 0.9; // 少しゆっくりめ(1が標準速度)
-  window.speechSynthesis.cancel(); // 前の読み上げが残っていたらキャンセル
+  utterance.lang = 'en-US';
+  utterance.rate = 0.9;
+
+  // 利用可能な音声の中から、英語(en-US優先)のものを探す
+  const voices = window.speechSynthesis.getVoices();
+  const englishVoice =
+    voices.find((v) => v.lang === 'en-US') ||
+    voices.find((v) => v.lang.startsWith('en'));
+
+  if (englishVoice) {
+    utterance.voice = englishVoice;
+  }
+
+  window.speechSynthesis.cancel();
   window.speechSynthesis.speak(utterance);
 };
 
