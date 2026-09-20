@@ -14,6 +14,33 @@ const REGIONS = [
 
 const TOTAL_POKEMON = 898;
 
+// タイプごとの日本語名と定番カラー
+const TYPE_INFO = {
+  normal: { ja: 'ノーマル', color: '#A8A878' },
+  fire: { ja: 'ほのお', color: '#F08030' },
+  water: { ja: 'みず', color: '#6890F0' },
+  electric: { ja: 'でんき', color: '#F8D030' },
+  grass: { ja: 'くさ', color: '#78C850' },
+  ice: { ja: 'こおり', color: '#98D8D8' },
+  fighting: { ja: 'かくとう', color: '#C03028' },
+  poison: { ja: 'どく', color: '#A040A0' },
+  ground: { ja: 'じめん', color: '#E0C068' },
+  flying: { ja: 'ひこう', color: '#A890F0' },
+  psychic: { ja: 'エスパー', color: '#F85888' },
+  bug: { ja: 'むし', color: '#A8B820' },
+  rock: { ja: 'いわ', color: '#B8A038' },
+  ghost: { ja: 'ゴースト', color: '#705898' },
+  dragon: { ja: 'ドラゴン', color: '#7038F8' },
+  dark: { ja: 'あく', color: '#705848' },
+  steel: { ja: 'はがね', color: '#B8B8D0' },
+  fairy: { ja: 'フェアリー', color: '#EE99AC' },
+};
+
+// 制御文字(\f, \n など)を取り除いて読みやすくする
+function cleanFlavorText(text) {
+  return text ? text.replace(/[\n\f\r]+/g, ' ') : '';
+}
+
 function generateRandomIds(count, max) {
   const ids = new Set();
   while (ids.size < count) {
@@ -68,6 +95,10 @@ function App() {
   const [pokedexRegion, setPokedexRegion] = useState(null);
   const [pokedexEntries, setPokedexEntries] = useState([]);
   const [pokedexLoading, setPokedexLoading] = useState(false);
+
+  // ---- 図鑑詳細画面用の状態 ----
+  const [pokedexDetail, setPokedexDetail] = useState(null);
+  const [pokedexDetailLoading, setPokedexDetailLoading] = useState(false);
 
   // アプリ起動時に一度だけ実行:ユーザー一覧と前回ログイン情報を読み込む
   useEffect(() => {
@@ -221,6 +252,76 @@ const fetchPokedexEntries = (region) => {
   ).then((entries) => {
     setPokedexEntries(entries);
     setPokedexLoading(false);
+  });
+};
+
+// 図鑑の1匹をクリックしたときに詳細画面へ遷移する
+const handleSelectPokedexEntry = (id) => {
+  setMode('pokedexDetail');
+  fetchPokedexDetail(id);
+};
+
+// 詳細画面用に、ポケモン本体・種族情報・各特性の詳細をまとめて取得する
+const fetchPokedexDetail = (id) => {
+  setPokedexDetailLoading(true);
+  setPokedexDetail(null);
+
+  Promise.all([
+    fetch(`https://pokeapi.co/api/v2/pokemon/${id}`).then((res) => res.json()),
+    fetch(`https://pokeapi.co/api/v2/pokemon-species/${id}`).then((res) => res.json()),
+  ]).then(([p, s]) => {
+    const jaEntry = s.names.find((n) => n.language.name === 'ja');
+
+    // 説明文(図鑑テキスト)。日本語がなければ英語にフォールバック
+    const jaFlavor = s.flavor_text_entries.find((f) => f.language.name === 'ja');
+    const enFlavor = s.flavor_text_entries.find((f) => f.language.name === 'en');
+    const descriptionJa = cleanFlavorText(jaFlavor ? jaFlavor.flavor_text : '');
+    const descriptionEn = cleanFlavorText(enFlavor ? enFlavor.flavor_text : '');
+
+    const types = p.types.map((t) => {
+      const info = TYPE_INFO[t.type.name] || { ja: t.type.name, color: '#777' };
+      return { nameEn: t.type.name, nameJa: info.ja, color: info.color };
+    });
+
+    // 特性ごとに詳細(日本語名・説明文)を追加で取得する
+    Promise.all(
+      p.abilities.map((a) =>
+        fetch(a.ability.url)
+          .then((res) => res.json())
+          .then((abilityData) => {
+            const abilityJaName = abilityData.names.find((n) => n.language.name === 'ja');
+            const abilityJaFlavor = abilityData.flavor_text_entries.find(
+              (f) => f.language.name === 'ja'
+            );
+            const abilityEnFlavor = abilityData.flavor_text_entries.find(
+              (f) => f.language.name === 'en'
+            );
+            return {
+              isHidden: a.is_hidden,
+              nameJa: abilityJaName ? abilityJaName.name : a.ability.name,
+              nameEn: a.ability.name,
+              descriptionJa: cleanFlavorText(
+                abilityJaFlavor ? abilityJaFlavor.flavor_text : ''
+              ),
+              descriptionEn: cleanFlavorText(
+                abilityEnFlavor ? abilityEnFlavor.flavor_text : ''
+              ),
+            };
+          })
+      )
+    ).then((abilities) => {
+      setPokedexDetail({
+        id,
+        nameJa: jaEntry ? jaEntry.name : p.name,
+        nameEn: p.name,
+        sprite: p.sprites.front_default,
+        types,
+        descriptionJa,
+        descriptionEn,
+        abilities,
+      });
+      setPokedexDetailLoading(false);
+    });
   });
 };
 
@@ -428,14 +529,23 @@ if (mode === 'pokedexList') {
         ) : (
           <div className="pokedex-grid">
             {pokedexEntries.map((entry) => (
-          <div key={entry.id} className="pokedex-grid-item">
+          <div
+            key={entry.id}
+            className="pokedex-grid-item"
+            onClick={() => handleSelectPokedexEntry(entry.id)}
+            role="button"
+            tabIndex={0}
+          >
             <img src={entry.sprite} alt={entry.nameEn} />
             <p>No.{entry.id}</p>
             <p>{language === 'ja' ? entry.nameJa : entry.nameEn}</p>
             {language === 'en' && (
               <button
                 className="speak-button"
-                onClick={() => speakEnglishName(entry.nameEn)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  speakEnglishName(entry.nameEn);
+                }}
               >
                 🔊
               </button>
@@ -447,6 +557,96 @@ if (mode === 'pokedexList') {
 
         <button className="dex-button ghost" onClick={() => setMode('pokedexRegion')}>
           地方選択に戻る
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// 図鑑:詳細画面(新規)
+if (mode === 'pokedexDetail') {
+  if (pokedexDetailLoading || !pokedexDetail) {
+    return (
+      <div className="pokedex">
+        <div className="pokedex-header">
+          <span className="lens"></span>
+          <span className="lens small"></span>
+          <span className="lens small"></span>
+        </div>
+        <div className="pokedex-screen">
+          <p>読み込み中...</p>
+        </div>
+      </div>
+    );
+  }
+
+  const displayName = language === 'ja' ? pokedexDetail.nameJa : pokedexDetail.nameEn;
+  const description =
+    (language === 'ja' ? pokedexDetail.descriptionJa : pokedexDetail.descriptionEn) ||
+    pokedexDetail.descriptionJa ||
+    pokedexDetail.descriptionEn ||
+    '説明文が見つかりませんでした';
+
+  return (
+    <div className="pokedex">
+      <div className="pokedex-header">
+        <span className="lens"></span>
+        <span className="lens small"></span>
+        <span className="lens small"></span>
+      </div>
+      <div className="pokedex-screen">
+        <span className="label">No.{pokedexDetail.id}</span>
+        <img src={pokedexDetail.sprite} alt={pokedexDetail.nameEn} />
+        <h1>{displayName}</h1>
+        {language === 'en' && (
+          <button
+            className="speak-button"
+            onClick={() => speakEnglishName(pokedexDetail.nameEn)}
+          >
+            🔊
+          </button>
+        )}
+      </div>
+      <div className="pokedex-console">
+        <h3>タイプ</h3>
+        <div className="type-badge-row">
+          {pokedexDetail.types.map((t) => (
+            <span
+              key={t.nameEn}
+              className="type-badge"
+              style={{ background: t.color }}
+            >
+              {language === 'ja' ? t.nameJa : t.nameEn}
+            </span>
+          ))}
+        </div>
+
+        <h3>説明</h3>
+        <p className="detail-description">{description}</p>
+
+        <h3>特性</h3>
+        <ul className="ability-list">
+          {pokedexDetail.abilities.map((a) => {
+            const abilityName = language === 'ja' ? a.nameJa : a.nameEn;
+            const abilityDesc =
+              (language === 'ja' ? a.descriptionJa : a.descriptionEn) ||
+              a.descriptionJa ||
+              a.descriptionEn ||
+              '説明文が見つかりませんでした';
+            return (
+              <li key={a.nameEn} className="ability-item">
+                <p className="ability-name">
+                  {abilityName}
+                  {a.isHidden && <span className="hidden-tag">隠れ特性</span>}
+                </p>
+                <p className="ability-description">{abilityDesc}</p>
+              </li>
+            );
+          })}
+        </ul>
+
+        <button className="dex-button ghost" onClick={() => setMode('pokedexList')}>
+          一覧に戻る
         </button>
       </div>
     </div>
