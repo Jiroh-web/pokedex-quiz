@@ -15,6 +15,16 @@
   --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
   --mono: ui-monospace, Consolas, monospace;
 
+  /* ---- pokedex-quiz 独自のカラー変数(App.cssから統合) ---- */
+  --red: #E63946;
+  --red-dark: #A62639;
+  --screen-bg: #1B1B2F;
+  --cream: #F4F1DE;
+  --text-dark: #22223B;
+  --accent-green: #8AC926;
+  --accent-yellow: #FFD23F;
+  --lens-blue: #4EA8DE;
+
   font: 18px/145% var(--sans);
   letter-spacing: 0.18px;
   color-scheme: light dark;
